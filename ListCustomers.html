@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Customers</title>
+    <style type = "text/css">
+
+        .table {
+            display: flex;
+        }
+
+        .table-cell {
+            display:inline-block;
+            width: 220px;
+        }
+
+    </style>
+</head>
+<body>
+
+    <table>
+        <thead>
+            <tr>
+                <th>UUID</th>
+                <th>Name</th>
+            </tr>
+        </thead>
+        <tbody id="customersList">
+        </tbody>
+    </table>
+
+    <br>
+
+    <div class='table'>
+        <div class='table-cell'>
+            <fieldset style="width:0px">
+                <legend>Add new customer</legend>
+                <p>
+                    <input id="nameOfCustomerToCreate" type="text" placeholder="Name">
+                </p>
+
+                <input type="submit" value="Add" onclick="createCustomer()">
+            </fieldset>
+        </div>
+
+        <div class='table-cell'>
+            <fieldset style="width:0px">
+                <legend>Update customer</legend>
+                <p>
+                    <input id="idOfCustomerToUpdate" type="text" placeholder="UUID">
+                </p>
+                <p>
+                    <input id="nameOfCustomerToUpdate" type="text" placeholder="Name">
+                </p>
+
+                <input type="submit" value="Update" onclick="updateCustomer()">
+            </fieldset>
+        </div>
+    </div>
+
+    <script type="text/javascript">
+
+        let listRequest = new XMLHttpRequest();
+        listRequest.open('GET', 'http://localhost:8080/customers/', true);
+        listRequest.send();
+        listRequest.onload = function() {
+            let listResponse = JSON.parse(listRequest.response);
+            switch(listResponse.statusCode) {
+                case 200: {
+                    let customers = listResponse.body;
+                    for (let i = 0; i < customers.length; i++) {
+                        addRowForCustomer(customers[i])
+                    }
+                    break;
+                }
+                default:
+                    alert(listResponse.reason);
+                    break;
+            }
+        };
+
+        let createCustomer = function() {
+            let nameElem = document.getElementById("nameOfCustomerToCreate");
+            let createRequest = new XMLHttpRequest();
+            createRequest.open('POST', 'http://localhost:8080/customers/create/', true);
+            createRequest.setRequestHeader('Content-Type', 'application/json');
+            createRequest.send(JSON.stringify({"name": nameElem.value})); // post
+            createRequest.onload = function() {
+                let createResponse = JSON.parse(createRequest.response);
+                switch (createResponse.statusCode) {
+                    case 200:
+                        addRowForCustomer(createResponse.body);
+                        break;
+                    default:
+                        alert(createResponse.reason);
+                        break;
+                }
+                nameElem.value = "";
+            }
+        };
+
+        let deleteCustomer = function(id) {
+            let deleteRequest = new XMLHttpRequest();
+            deleteRequest.open('POST', `http://localhost:8080/customers/delete?id=${id}`, true); //delete
+            deleteRequest.send();
+            deleteRequest.onload = function() {
+                let deleteResponse = JSON.parse(deleteRequest.response);
+                switch(deleteResponse.statusCode) {
+                    case 200:
+                        const nodeToDelete = document.getElementById(`r${id}`);
+                        nodeToDelete.parentNode.removeChild(nodeToDelete);
+                        break;
+                    default:
+                        alert(deleteResponse.reason);
+                        break;
+                }
+            }
+        };
+
+        let updateCustomer = function() {
+            let idElem = document.getElementById("idOfCustomerToUpdate");
+            let nameElem = document.getElementById("nameOfCustomerToUpdate");
+            let updateRequest = new XMLHttpRequest();
+            updateRequest.open('POST', `http://localhost:8080/customers/update?id=${idElem.value}`, true);
+            updateRequest.setRequestHeader('Content-Type', 'application/json');
+            updateRequest.send(JSON.stringify({"name": nameElem.value})); // post
+            updateRequest.onload = function() {
+                let updateResponse = JSON.parse(updateRequest.response);
+                switch(updateResponse.statusCode) {
+                    case 200:
+                        document.getElementById(`n${idElem.value}`).innerText = updateResponse.body;
+                        break;
+                    default:
+                        alert(updateResponse.reason);
+                        break;
+                }
+                idElem.value = "";
+                nameElem.value = "";
+            }
+        };
+
+        let addRowForCustomer = function(customer) {
+            const elements    = document.createElement('tr');
+            const idElem      = document.createElement('td');
+            const nameElem    = document.createElement('td');
+            const deleteElem  = document.createElement('td');
+            const deleteBtn   = document.createElement('button');
+
+            idElem.append(customer.id);
+            nameElem.append(customer.name);
+            nameElem.setAttribute("id", `n${customer.id}`);
+
+            deleteBtn.append('Delete');
+            deleteBtn.addEventListener('click', () => deleteCustomer(customer.id));
+
+            deleteElem.append(deleteBtn);
+            elements.append(idElem);
+            elements.append(nameElem);
+            elements.append(deleteElem);
+            elements.setAttribute("id", `r${customer.id}`);
+
+            document.getElementById("customersList").append(elements);
+        }
+
+    </script>
+
+</body>
+</html>
